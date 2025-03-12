@@ -9,6 +9,7 @@ A Python CLI tool to analyze Git repository statistics for developers with a foc
 - Calculate net impact on codebase
 - Analyze commit frequency and developer productivity patterns
 - Score developers based on commit consistency and cadence
+- Consolidate multiple names/emails for the same developer
 - Filter by date range, branch, or file patterns
 - Colorful terminal output with formatted tables
 
@@ -93,6 +94,32 @@ Combine multiple filters:
 gitstats /path/to/repo --since=2023-01-01 --until=2023-12-31 --branch=develop --exclude=.json,.md
 ```
 
+## Developer Name Consolidation
+
+GitStats intelligently consolidates commits from the same developer who may use different names or email addresses. This provides a more accurate picture of each developer's contributions.
+
+### How It Works
+
+1. **Email-Based Consolidation**: 
+   - Uses email addresses as the primary identifier for developers
+   - Normalizes email addresses to handle common variations
+   - Groups commits from the same email address even if the author name differs
+
+2. **Name Variations Display**:
+   - Shows the most commonly used name as the primary identifier
+   - Lists other name variations in parentheses
+   - Example: "Kojo Hinson (Kojo)" indicates the same person used both names
+
+3. **Smart Email Matching**:
+   - Detects when the same person uses different email addresses
+   - Builds a consolidated mapping of all emails for the same author
+   - Handles GitHub noreply emails and other special cases
+
+This feature solves common issues in Git repositories where developers might:
+- Use different machines with different Git configurations
+- Change their display name over time
+- Use personal and work email addresses interchangeably
+
 ## Commit Frequency Metrics
 
 GitStats provides a comprehensive analysis of developer commit patterns with a focus on frequency and consistency. The tool calculates various metrics to help understand how regularly developers are contributing to the codebase.
@@ -149,13 +176,13 @@ For each developer, GitStats tracks and displays:
 ### Example Output
 
 ```
-+-----------------+-----------+----------------------------------------------------------+------------------+---------------+
-| Developer       |   Commits | Commit Frequency                                         | Activity Period  | Code Impact   |
-+=================+===========+==========================================================+==================+===============+
-| Dylan Hanson    |       267 | ★9.4/10 (48.4% days, 92.9% weeks, 8d streak, 0.3d gap)   | 3mo ago → 31m ago| +38071/-18760 |
-+-----------------+-----------+----------------------------------------------------------+------------------+---------------+
-| Ryan Callihan   |       134 | ★7.7/10 (41.2% days, 100.0% weeks, 3d streak, 0.4d gap)  | 1mo ago → 8m ago | +7736/-5349   |
-+-----------------+-----------+----------------------------------------------------------+------------------+---------------+
++--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
+| Developer                |   Commits | Commit Frequency                                         | Activity Period  | Code Impact   |
++==========================+===========+==========================================================+==================+===============+
+| Dylan Hanson             |       267 | ★9.4/10 (48.4% days, 92.9% weeks, 8d streak, 0.3d gap)   | 3mo ago → 31m ago| +38071/-18760 |
++--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
+| Kojo (Kojo Hinson)       |       118 | ★7.9/10 (36.7% days, 107.7% weeks, 6d streak, 0.8d gap)  | 3mo ago → 20h ago| +14795/-8754  |
++--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
 ```
 
 ## Development

@@ -66,6 +66,7 @@ gitstats /path/to/git/repository
 - `--until`: Only consider commits older than this date (format: YYYY-MM-DD)
 - `--branch`: Analyze only a specific branch
 - `--exclude`: Comma-separated list of file patterns to exclude
+- `--show-emails`: Show email addresses in the output table to help debug name consolidation issues
 
 ### Examples
 
@@ -89,16 +90,23 @@ Exclude certain file types:
 gitstats /path/to/repo --exclude=.json,.md,node_modules
 ```
 
+Show email addresses to debug name consolidation:
+```
+gitstats /path/to/repo --show-emails
+```
+
 Combine multiple filters:
 ```
-gitstats /path/to/repo --since=2023-01-01 --until=2023-12-31 --branch=develop --exclude=.json,.md
+gitstats /path/to/repo --since=2023-01-01 --until=2023-12-31 --branch=develop --exclude=.json,.md --show-emails
 ```
 
 ## Developer Name Consolidation
 
 GitStats intelligently consolidates commits from the same developer who may use different names or email addresses. This provides a more accurate picture of each developer's contributions.
 
-### How It Works
+### Automatic Consolidation
+
+By default, GitStats attempts to automatically consolidate developers based on:
 
 1. **Email-Based Consolidation**: 
    - Uses email addresses as the primary identifier for developers
@@ -114,6 +122,24 @@ GitStats intelligently consolidates commits from the same developer who may use 
    - Detects when the same person uses different email addresses
    - Builds a consolidated mapping of all emails for the same author
    - Handles GitHub noreply emails and other special cases
+
+### Manual Identity Mapping
+
+For more precise control over identity consolidation, GitStats provides commands to manage identity mappings:
+
+```
+# Add an identity mapping (map a name or email to a canonical identity)
+gitstats identity add /path/to/repo "rcallihan" "Ryan Callihan"
+gitstats identity add /path/to/repo "ryancallihan@gmail.com" "Ryan Callihan"
+
+# List all identity mappings for a repository
+gitstats identity list /path/to/repo
+
+# Remove an identity mapping
+gitstats identity remove /path/to/repo "rcallihan"
+```
+
+Identity mappings are stored per repository in `~/.config/gitstats/` and are applied during statistics collection.
 
 This feature solves common issues in Git repositories where developers might:
 - Use different machines with different Git configurations

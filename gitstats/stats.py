@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 import git
 from colorama import Fore, Style
 
+from .identity import load_identity_mappings, get_canonical_identity
+
 def normalize_email(email):
     """Normalize email address to handle common variations."""
     if not email:
@@ -54,8 +56,11 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         print(f"{Fore.RED}Error: Path {repo_path} does not exist.{Style.RESET_ALL}")
         sys.exit(1)
     
+    # Load identity mappings for this repository
+    identity_mappings = load_identity_mappings(repo_path)
+    
     # Initialize stats dictionary
-    # Use email as the primary key to avoid duplication of developers
+    # Use canonical identity as the primary key to avoid duplication of developers
     stats = defaultdict(lambda: {
         'name': set(),  # Store all name variations
         'email': set(),  # Store all email variations
@@ -80,12 +85,15 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         author_name = commit.author.name
         author_email = normalize_email(commit.author.email)
         
+        # Get the canonical identity for this author
+        canonical_identity = get_canonical_identity(identity_mappings, author_name, author_email)
+        
         # Map this email to this author
         if author_email not in email_to_author:
-            email_to_author[author_email] = author_name
+            email_to_author[author_email] = canonical_identity
         
         # Map this author to this email
-        author_emails[author_name].add(author_email)
+        author_emails[canonical_identity].add(author_email)
     
     # Build a consolidated mapping of all emails for the same author
     # This handles cases where the same person uses different email addresses
@@ -154,33 +162,36 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
             raw_email = commit.author.email
             author_email = normalize_email(raw_email)
             
+            # Get the canonical identity for this author
+            canonical_identity = get_canonical_identity(identity_mappings, author_name, author_email)
+            
             # Use the consolidated email as the key
             canonical_email = consolidated_emails.get(author_email, author_email)
             
             commit_date = datetime.fromtimestamp(commit.committed_date)
             
             # Update author information
-            stats[canonical_email]['name'].add(author_name)
-            stats[canonical_email]['email'].add(raw_email)
+            stats[canonical_identity]['name'].add(author_name)
+            stats[canonical_identity]['email'].add(raw_email)
             
             # Update commit count and dates
-            stats[canonical_email]['commits'] += 1
-            stats[canonical_email]['commit_dates'].append(commit_date)
+            stats[canonical_identity]['commits'] += 1
+            stats[canonical_identity]['commit_dates'].append(commit_date)
             
             # Track commit frequency by day, week, and month
             day_key = commit_date.strftime('%Y-%m-%d')
             week_key = f"{commit_date.isocalendar()[0]}-W{commit_date.isocalendar()[1]:02d}"
             month_key = commit_date.strftime('%Y-%m')
             
-            stats[canonical_email]['commit_days'][day_key] += 1
-            stats[canonical_email]['commit_weeks'][week_key] += 1
-            stats[canonical_email]['commit_months'][month_key] += 1
+            stats[canonical_identity]['commit_days'][day_key] += 1
+            stats[canonical_identity]['commit_weeks'][week_key] += 1
+            stats[canonical_identity]['commit_months'][month_key] += 1
             
-            if stats[canonical_email]['first_commit'] is None or commit_date < stats[canonical_email]['first_commit']:
-                stats[canonical_email]['first_commit'] = commit_date
+            if stats[canonical_identity]['first_commit'] is None or commit_date < stats[canonical_identity]['first_commit']:
+                stats[canonical_identity]['first_commit'] = commit_date
                 
-            if stats[canonical_email]['last_commit'] is None or commit_date > stats[canonical_email]['last_commit']:
-                stats[canonical_email]['last_commit'] = commit_date
+            if stats[canonical_identity]['last_commit'] is None or commit_date > stats[canonical_identity]['last_commit']:
+                stats[canonical_identity]['last_commit'] = commit_date
             
             # Get the diff stats for this commit
             if commit.parents:
@@ -193,7 +204,7 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     
                     # Count lines added and deleted
                     if hasattr(diff_item, 'a_path') and diff_item.a_path:
-                        stats[canonical_email]['files_changed'] += 1
+                        stats[canonical_identity]['files_changed'] += 1
                         
                         # Get line stats if available
                         if hasattr(diff_item, 'a_blob') and diff_item.a_blob and hasattr(diff_item, 'b_blob') and diff_item.b_blob:
@@ -208,15 +219,15 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                                     elif line.startswith('-') and not line.startswith('---'):
                                         lines_deleted += 1
                                 
-                                stats[canonical_email]['lines_added'] += lines_added
-                                stats[canonical_email]['lines_deleted'] += lines_deleted
-                                stats[canonical_email]['net_lines'] += (lines_added - lines_deleted)
+                                stats[canonical_identity]['lines_added'] += lines_added
+                                stats[canonical_identity]['lines_deleted'] += lines_deleted
+                                stats[canonical_identity]['net_lines'] += (lines_added - lines_deleted)
                             except (UnicodeDecodeError, AttributeError):
                                 # Skip binary files or files with encoding issues
                                 pass
         
         # Calculate commit frequency metrics for each developer
-        for email, data in stats.items():
+        for identity, data in stats.items():
             if data['first_commit'] and data['last_commit']:
                 # Calculate total days in the date range
                 total_days = (data['last_commit'] - data['first_commit']).days + 1

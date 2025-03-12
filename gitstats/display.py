@@ -77,7 +77,7 @@ def format_frequency_metrics(data):
     
     return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {avg_gap} gap)"
 
-def display_stats(stats):
+def display_stats(stats, show_emails=False):
     """Display the collected statistics in a formatted table."""
     if not stats:
         print(f"{Fore.YELLOW}No commits found matching the criteria.{Style.RESET_ALL}")
@@ -106,14 +106,35 @@ def display_stats(stats):
             if other_names:
                 name_variations = f" ({', '.join(other_names)})"
         
+        # Format email addresses if requested
+        email_info = ""
+        if show_emails:
+            # Format the canonical email and any variations
+            canonical_email = email
+            
+            # Filter out invalid email addresses
+            valid_emails = [e for e in data['email'] if '@' in e and e != '--global' and e != 'user.email']
+            
+            if valid_emails:
+                # Show all valid emails to help debug name consolidation issues
+                email_info = "\n".join(valid_emails)
+            else:
+                email_info = canonical_email
+        
         # Add row to table
-        table_data.append([
+        row = [
             f"{display_name}{name_variations}",
             data['commits'],
             frequency,
             f"{first_commit} → {last_commit}",
             code_impact
-        ])
+        ]
+        
+        # Add email column if requested
+        if show_emails:
+            row.insert(1, email_info)
+        
+        table_data.append(row)
     
     # Display table with more concise headers
     headers = [
@@ -123,6 +144,10 @@ def display_stats(stats):
         "Activity Period",
         "Code Impact"
     ]
+    
+    # Add email header if requested
+    if show_emails:
+        headers.insert(1, "Email")
     
     print(f"\n{Fore.CYAN}Git Repository Commit Frequency Analysis{Style.RESET_ALL}")
     print(tabulate(table_data, headers=headers, tablefmt="grid"))

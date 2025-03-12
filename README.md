@@ -12,6 +12,7 @@ A Python CLI tool to analyze Git repository statistics for developers with a foc
 - Consolidate multiple names/emails for the same developer
 - Filter by date range, branch, or file patterns
 - Colorful terminal output with formatted tables
+- Aggregate statistics across multiple repositories
 
 ## Installation
 
@@ -61,7 +62,7 @@ gitstats /path/to/git/repository
 
 ### Command Line Options
 
-- `repo_path`: Path to the Git repository to analyze (required)
+- `repo_paths`: Path(s) to the Git repository/repositories to analyze (required, can specify multiple)
 - `--since`: Only consider commits more recent than this date (format: YYYY-MM-DD)
 - `--until`: Only consider commits older than this date (format: YYYY-MM-DD)
 - `--branch`: Analyze only a specific branch
@@ -72,33 +73,53 @@ gitstats /path/to/git/repository
 
 Analyze all commits in a repository:
 ```
-gitstats /path/to/repo
+gitstats stats /path/to/repo
 ```
 
 Analyze commits from the last month:
 ```
-gitstats /path/to/repo --since=2023-05-01
+gitstats stats /path/to/repo --since=2023-05-01
 ```
 
 Analyze commits on a specific branch:
 ```
-gitstats /path/to/repo --branch=main
+gitstats stats /path/to/repo --branch=main
 ```
 
 Exclude certain file types:
 ```
-gitstats /path/to/repo --exclude=.json,.md,node_modules
+gitstats stats /path/to/repo --exclude=.json,.md,node_modules
 ```
 
 Show email addresses to debug name consolidation:
 ```
-gitstats /path/to/repo --show-emails
+gitstats stats /path/to/repo --show-emails
 ```
 
 Combine multiple filters:
 ```
-gitstats /path/to/repo --since=2023-01-01 --until=2023-12-31 --branch=develop --exclude=.json,.md --show-emails
+gitstats stats /path/to/repo --since=2023-01-01 --until=2023-12-31 --branch=develop --exclude=.json,.md --show-emails
 ```
+
+### Multi-Repository Analysis
+
+GitStats can analyze multiple repositories at once and aggregate the statistics:
+
+```
+gitstats stats /path/to/repo1 /path/to/repo2 /path/to/repo3
+```
+
+This will:
+1. Analyze each repository individually
+2. Combine the statistics for each developer across all repositories
+3. Display a consolidated view of developer contributions
+4. Recalculate commit frequency metrics based on the aggregated data
+
+This feature is useful for:
+- Analyzing developer contributions across multiple projects
+- Comparing team productivity across different repositories
+- Getting a holistic view of development activity in a microservices architecture
+- Tracking contributions from developers who work on multiple repositories
 
 ## Developer Name Consolidation
 

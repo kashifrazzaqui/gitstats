@@ -77,7 +77,7 @@ def format_frequency_metrics(data):
     
     return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {avg_gap} gap)"
 
-def display_stats(stats, show_emails=False):
+def display_stats(stats, show_emails=False, is_merged=False):
     """Display the collected statistics in a formatted table."""
     if not stats:
         print(f"{Fore.YELLOW}No commits found matching the criteria.{Style.RESET_ALL}")
@@ -149,7 +149,11 @@ def display_stats(stats, show_emails=False):
     if show_emails:
         headers.insert(1, "Email")
     
-    print(f"\n{Fore.CYAN}Git Repository Commit Frequency Analysis{Style.RESET_ALL}")
+    title = f"{Fore.CYAN}Git Repository Commit Frequency Analysis"
+    if is_merged:
+        title = f"{Fore.CYAN}Aggregated Git Repositories Commit Frequency Analysis"
+    
+    print(f"\n{title}{Style.RESET_ALL}")
     print(tabulate(table_data, headers=headers, tablefmt="grid"))
     
     # Display summary

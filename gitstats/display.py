@@ -85,7 +85,10 @@ def display_stats(stats):
         
     # Prepare table data
     table_data = []
-    for author, data in sorted(stats.items(), key=lambda x: get_commit_frequency_score(x[1]), reverse=True):
+    for email, data in sorted(stats.items(), key=lambda x: get_commit_frequency_score(x[1]), reverse=True):
+        # Get the display name (most common name used by this email)
+        display_name = data['display_name']
+        
         # Format dates more concisely
         first_commit = format_time_elapsed(data['first_commit'])
         last_commit = format_time_elapsed(data['last_commit'])
@@ -96,9 +99,16 @@ def display_stats(stats):
         # Format commit frequency metrics
         frequency = format_frequency_metrics(data)
         
+        # Format name variations if there are multiple
+        name_variations = ""
+        if len(data['name']) > 1:
+            other_names = [name for name in data['name'] if name != display_name]
+            if other_names:
+                name_variations = f" ({', '.join(other_names)})"
+        
         # Add row to table
         table_data.append([
-            author,
+            f"{display_name}{name_variations}",
             data['commits'],
             frequency,
             f"{first_commit} → {last_commit}",

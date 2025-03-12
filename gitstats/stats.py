@@ -4,11 +4,32 @@ Git repository statistics analysis functionality.
 
 import os
 import sys
+import re
 from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 
 import git
 from colorama import Fore, Style
+
+def normalize_email(email):
+    """Normalize email address to handle common variations."""
+    if not email:
+        return "unknown@example.com"
+    
+    # Convert to lowercase
+    email = email.lower()
+    
+    # Remove any whitespace
+    email = email.strip()
+    
+    # Handle GitHub noreply emails which may contain username
+    if '+' in email and '@users.noreply.github.com' in email:
+        # Extract username from GitHub noreply email
+        match = re.search(r'([^+]+)\+', email)
+        if match:
+            return f"{match.group(1)}@github.com"
+    
+    return email
 
 def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None):
     """
@@ -34,7 +55,10 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         sys.exit(1)
     
     # Initialize stats dictionary
+    # Use email as the primary key to avoid duplication of developers
     stats = defaultdict(lambda: {
+        'name': set(),  # Store all name variations
+        'email': set(),  # Store all email variations
         'commits': 0,
         'lines_added': 0,
         'lines_deleted': 0,
@@ -47,6 +71,50 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         'commit_weeks': Counter(),  # Count commits per week
         'commit_months': Counter()  # Count commits per month
     })
+    
+    # First pass: collect all author names and emails to build a mapping
+    email_to_author = {}
+    author_emails = defaultdict(set)
+    
+    for commit in repo.iter_commits('--all'):
+        author_name = commit.author.name
+        author_email = normalize_email(commit.author.email)
+        
+        # Map this email to this author
+        if author_email not in email_to_author:
+            email_to_author[author_email] = author_name
+        
+        # Map this author to this email
+        author_emails[author_name].add(author_email)
+    
+    # Build a consolidated mapping of all emails for the same author
+    # This handles cases where the same person uses different email addresses
+    consolidated_emails = {}
+    processed_authors = set()
+    
+    for author, emails in author_emails.items():
+        if author in processed_authors:
+            continue
+            
+        # Find all related authors (those who share at least one email)
+        related_authors = {author}
+        all_emails = set(emails)
+        
+        # Find all authors who share emails with this author
+        for other_author, other_emails in author_emails.items():
+            if other_author != author and not emails.isdisjoint(other_emails):
+                related_authors.add(other_author)
+                all_emails.update(other_emails)
+        
+        # Mark all these authors as processed
+        processed_authors.update(related_authors)
+        
+        # Create a canonical email for this group (use the first email alphabetically)
+        canonical_email = sorted(all_emails)[0]
+        
+        # Map all emails to the canonical email
+        for email in all_emails:
+            consolidated_emails[email] = canonical_email
     
     # Use GitPython's built-in commit iteration instead of git log
     # This should handle dates correctly
@@ -82,28 +150,37 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         
         # Process each commit
         for commit in commits:
-            author = commit.author.name
-            email = commit.author.email
+            author_name = commit.author.name
+            raw_email = commit.author.email
+            author_email = normalize_email(raw_email)
+            
+            # Use the consolidated email as the key
+            canonical_email = consolidated_emails.get(author_email, author_email)
+            
             commit_date = datetime.fromtimestamp(commit.committed_date)
             
+            # Update author information
+            stats[canonical_email]['name'].add(author_name)
+            stats[canonical_email]['email'].add(raw_email)
+            
             # Update commit count and dates
-            stats[author]['commits'] += 1
-            stats[author]['commit_dates'].append(commit_date)
+            stats[canonical_email]['commits'] += 1
+            stats[canonical_email]['commit_dates'].append(commit_date)
             
             # Track commit frequency by day, week, and month
             day_key = commit_date.strftime('%Y-%m-%d')
             week_key = f"{commit_date.isocalendar()[0]}-W{commit_date.isocalendar()[1]:02d}"
             month_key = commit_date.strftime('%Y-%m')
             
-            stats[author]['commit_days'][day_key] += 1
-            stats[author]['commit_weeks'][week_key] += 1
-            stats[author]['commit_months'][month_key] += 1
+            stats[canonical_email]['commit_days'][day_key] += 1
+            stats[canonical_email]['commit_weeks'][week_key] += 1
+            stats[canonical_email]['commit_months'][month_key] += 1
             
-            if stats[author]['first_commit'] is None or commit_date < stats[author]['first_commit']:
-                stats[author]['first_commit'] = commit_date
+            if stats[canonical_email]['first_commit'] is None or commit_date < stats[canonical_email]['first_commit']:
+                stats[canonical_email]['first_commit'] = commit_date
                 
-            if stats[author]['last_commit'] is None or commit_date > stats[author]['last_commit']:
-                stats[author]['last_commit'] = commit_date
+            if stats[canonical_email]['last_commit'] is None or commit_date > stats[canonical_email]['last_commit']:
+                stats[canonical_email]['last_commit'] = commit_date
             
             # Get the diff stats for this commit
             if commit.parents:
@@ -116,7 +193,7 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     
                     # Count lines added and deleted
                     if hasattr(diff_item, 'a_path') and diff_item.a_path:
-                        stats[author]['files_changed'] += 1
+                        stats[canonical_email]['files_changed'] += 1
                         
                         # Get line stats if available
                         if hasattr(diff_item, 'a_blob') and diff_item.a_blob and hasattr(diff_item, 'b_blob') and diff_item.b_blob:
@@ -131,15 +208,15 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                                     elif line.startswith('-') and not line.startswith('---'):
                                         lines_deleted += 1
                                 
-                                stats[author]['lines_added'] += lines_added
-                                stats[author]['lines_deleted'] += lines_deleted
-                                stats[author]['net_lines'] += (lines_added - lines_deleted)
+                                stats[canonical_email]['lines_added'] += lines_added
+                                stats[canonical_email]['lines_deleted'] += lines_deleted
+                                stats[canonical_email]['net_lines'] += (lines_added - lines_deleted)
                             except (UnicodeDecodeError, AttributeError):
                                 # Skip binary files or files with encoding issues
                                 pass
         
         # Calculate commit frequency metrics for each developer
-        for author, data in stats.items():
+        for email, data in stats.items():
             if data['first_commit'] and data['last_commit']:
                 # Calculate total days in the date range
                 total_days = (data['last_commit'] - data['first_commit']).days + 1
@@ -202,6 +279,10 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     data['max_streak'] = max_streak
                 else:
                     data['max_streak'] = 0
+                
+                # Choose the most common name for display
+                name_counter = Counter(data['name'])
+                data['display_name'] = name_counter.most_common(1)[0][0]
     
     except Exception as e:
         print(f"{Fore.RED}Error analyzing repository: {str(e)}{Style.RESET_ALL}")

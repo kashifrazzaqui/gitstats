@@ -223,7 +223,12 @@ For each developer, GitStats tracks and displays:
 - **Weeks with Commits**: Number of unique weeks with at least one commit
 - **Months with Commits**: Number of unique months with at least one commit
 - **Commit Streak**: Longest consecutive days with commits
-- **Average Gap**: Average time between commits in days
+- **Gap Metrics**: 
+  - **Commit Gap**: Average time between individual commits in days
+  - **Active Day Gap**: Average time between days with at least one commit
+  - **Workday Gap**: Average workdays (Monday-Friday) between commits
+- **Activity Ratio**: Percentage of days spent in commit streaks vs. days with no activity
+- **Workday Metrics**: Percentage of commits made on weekdays vs. weekends
 - **Maximum Gap**: Longest period without commits in days
 
 ### Interpreting the Results
@@ -231,17 +236,19 @@ For each developer, GitStats tracks and displays:
 - **High Frequency Score (8-10)**: Developers who commit very regularly, showing consistent work patterns and likely good progress
 - **Medium Frequency Score (5-7)**: Developers with reasonably regular commits but with some gaps or inconsistencies
 - **Low Frequency Score (0-4)**: Developers with infrequent or irregular commits, which might indicate challenges or blockers
+- **Activity Ratio**: Higher active percentage indicates more consistent development patterns
+- **Workday Metrics**: Helps identify work patterns and whether development occurs during business hours
 
 ### Example Output
 
 ```
-+--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
-| Developer                |   Commits | Commit Frequency                                         | Activity Period  | Code Impact   |
-+==========================+===========+==========================================================+==================+===============+
-| Dylan Hanson             |       267 | ★9.4/10 (48.4% days, 92.9% weeks, 8d streak, 0.3d gap)   | 3mo ago → 31m ago| +38071/-18760 |
-+--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
-| Kojo (Kojo Hinson)       |       118 | ★7.9/10 (36.7% days, 107.7% weeks, 6d streak, 0.8d gap)  | 3mo ago → 20h ago| +14795/-8754  |
-+--------------------------+-----------+----------------------------------------------------------+------------------+---------------+
++--------------------------+-----------+-------------------------------------------------------------------------------------+------------------+---------------+
+| Developer                |   Commits | Commit Frequency                                                                    | Activity Period  | Code Impact   |
++==========================+===========+=====================================================================================+==================+===============+
+| Dylan Hanson             |       267 | ★9.4/10 (48.4% days, 92.9% weeks, 8d streak, 0.3d/2.1d/0.1wd gap, active:inactive=48%:52%, weekday:weekend=90%:10%) | 3mo ago → 31m ago| +38071/-18760 |
++--------------------------+-----------+-------------------------------------------------------------------------------------+------------------+---------------+
+| Kojo (Kojo Hinson)       |       118 | ★7.9/10 (36.7% days, 107.7% weeks, 6d streak, 0.8d/2.4d/0.3wd gap, active:inactive=37%:63%, weekday:weekend=92%:8%)  | 3mo ago → 20h ago| +14795/-8754  |
++--------------------------+-----------+-------------------------------------------------------------------------------------+------------------+---------------+
 ```
 
 ## Development

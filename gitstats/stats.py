@@ -249,8 +249,22 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                 data['days_with_commits'] = days_with_commits
                 data['commit_day_ratio'] = days_with_commits / total_days if total_days > 0 else 0
                 
-                # Calculate weeks in the date range
-                total_weeks = (total_days + 6) // 7  # Round up to nearest week
+                # Calculate weeks in the date range using ISO calendar weeks
+                first_week = data['first_commit'].isocalendar()[1]
+                first_year = data['first_commit'].isocalendar()[0]
+                today_week = today.isocalendar()[1]
+                today_year = today.isocalendar()[0]
+                
+                # Calculate total weeks between first commit and today
+                if first_year == today_year:
+                    total_weeks = today_week - first_week + 1
+                else:
+                    # Handle spanning multiple years
+                    years_between = today_year - first_year - 1  # Years between (not including first and last)
+                    weeks_in_first_year = datetime(first_year, 12, 28).isocalendar()[1] - first_week + 1  # Weeks from first week to end of year
+                    weeks_in_last_year = today_week  # Weeks from start of year to today
+                    total_weeks = weeks_in_first_year + (years_between * 52) + weeks_in_last_year
+                
                 data['total_weeks'] = total_weeks
                 data['weeks_with_commits'] = weeks_with_commits
                 data['commit_week_ratio'] = weeks_with_commits / total_weeks if total_weeks > 0 else 0

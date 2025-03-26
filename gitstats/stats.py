@@ -287,6 +287,24 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     data['avg_gap_days'] = 0
                     data['max_gap_days'] = 0
                 
+                # Calculate daily aggregation gap metrics
+                if len(data['commit_days']) > 1:
+                    # Convert day strings to datetime objects
+                    sorted_active_days = sorted([datetime.strptime(day, '%Y-%m-%d') for day in data['commit_days'].keys()])
+                    
+                    # Calculate gaps between active days in days
+                    active_day_gaps = [(sorted_active_days[i+1] - sorted_active_days[i]).days 
+                                     for i in range(len(sorted_active_days)-1)]
+                    
+                    # Calculate metrics
+                    data['active_day_gaps'] = active_day_gaps
+                    data['avg_active_day_gap'] = sum(active_day_gaps) / len(active_day_gaps)
+                    data['max_active_day_gap'] = max(active_day_gaps)
+                else:
+                    data['active_day_gaps'] = []
+                    data['avg_active_day_gap'] = 0
+                    data['max_active_day_gap'] = 0
+                
                 # Calculate commit streak metrics
                 sorted_days = sorted(data['commit_days'].keys())
                 if sorted_days:

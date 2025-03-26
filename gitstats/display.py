@@ -72,10 +72,15 @@ def format_frequency_metrics(data):
     # Format streak
     streak = f"{data['max_streak']}d"
     
-    # Format gap
-    avg_gap = f"{data['avg_gap_days']:.1f}d"
+    # Format gaps
+    commit_gap = f"{data['avg_gap_days']:.1f}d"
     
-    return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {avg_gap} gap)"
+    # Format active day gaps if available
+    if 'avg_active_day_gap' in data:
+        active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
+        return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {commit_gap}/{active_day_gap} gap)"
+    else:
+        return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {commit_gap} gap)"
 
 def display_stats(stats, show_emails=False, is_merged=False):
     """Display the collected statistics in a formatted table."""
@@ -170,4 +175,10 @@ def display_stats(stats, show_emails=False, is_merged=False):
     print(f"\n{Fore.CYAN}Commit Frequency Score Legend:{Style.RESET_ALL}")
     print(f"{Fore.GREEN}★8-10{Style.RESET_ALL}: Excellent - Very consistent commit pattern")
     print(f"{Fore.YELLOW}★5-7{Style.RESET_ALL}: Good - Regular commits with some gaps")
-    print(f"{Fore.RED}★0-4{Style.RESET_ALL}: Needs improvement - Infrequent or irregular commits") 
+    print(f"{Fore.RED}★0-4{Style.RESET_ALL}: Needs improvement - Infrequent or irregular commits")
+    
+    # Display gap metrics explanation
+    print(f"\n{Fore.CYAN}Gap Metrics:{Style.RESET_ALL}")
+    print(f"Format: commit_gap/active_day_gap")
+    print(f"commit_gap: Average time between individual commits")
+    print(f"active_day_gap: Average time between days with at least one commit") 

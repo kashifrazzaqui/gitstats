@@ -54,15 +54,22 @@ A Python CLI tool to analyze Git repository statistics for developers with a foc
 
 ## Usage
 
-Basic usage:
+Basic usage (analyzes last 30 days of commits by default):
 
 ```
-gitstats /path/to/git/repository
+gitstats stats /path/to/git/repository
+```
+
+To analyze all commits in the repository:
+
+```
+gitstats stats /path/to/git/repository --all-commits
 ```
 
 ### Command Line Options
 
 - `repo_paths`: Path(s) to the Git repository/repositories to analyze (required, can specify multiple)
+- `--all-commits`: Analyze all commits in the repository history (by default, only commits from the last 30 days are analyzed)
 - `--since`: Only consider commits more recent than this date (format: YYYY-MM-DD)
 - `--until`: Only consider commits older than this date (format: YYYY-MM-DD)
 - `--branch`: Analyze only a specific branch
@@ -71,14 +78,19 @@ gitstats /path/to/git/repository
 
 ### Examples
 
-Analyze all commits in a repository:
+Analyze commits from the last 30 days (default):
 ```
 gitstats stats /path/to/repo
 ```
 
-Analyze commits from the last month:
+Analyze all commits in the repository:
 ```
-gitstats stats /path/to/repo --since=2023-05-01
+gitstats stats /path/to/repo --all-commits
+```
+
+Analyze commits from a specific date range:
+```
+gitstats stats /path/to/repo --since=2023-05-01 --until=2023-12-31
 ```
 
 Analyze commits on a specific branch:

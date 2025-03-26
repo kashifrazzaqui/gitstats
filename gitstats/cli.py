@@ -6,7 +6,7 @@ Command-line interface for GitStats.
 import argparse
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import colorama
 from colorama import Fore, Style
@@ -43,6 +43,11 @@ def parse_args():
         "--until", 
         help="Only consider commits older than this date (format: YYYY-MM-DD)",
         default=None
+    )
+    stats_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        help="Analyze all commits instead of only the last 30 days"
     )
     stats_parser.add_argument(
         "--branch", 
@@ -198,6 +203,13 @@ def merge_stats(stats_list):
 
 def handle_stats_command(args):
     """Handle the stats command."""
+    # Check if we should limit to last 30 days
+    if not args.all_commits and not args.since:
+        # Calculate date 30 days ago
+        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        args.since = thirty_days_ago
+        print(f"{Fore.CYAN}Note: Only analyzing commits from the last 30 days. Use --all-commits to analyze all commits.{Style.RESET_ALL}")
+    
     # Check if we have multiple repositories
     if len(args.repo_paths) > 1:
         print(f"{Fore.CYAN}Analyzing {len(args.repo_paths)} Git repositories:{Style.RESET_ALL}")
@@ -258,6 +270,7 @@ def main():
         args.branch = None
         args.exclude = ""
         args.show_emails = False
+        args.all_commits = False
         args.func = handle_stats_command
     
     # If no command is specified but repo_path is, default to stats

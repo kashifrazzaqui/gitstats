@@ -76,11 +76,34 @@ def format_frequency_metrics(data):
     commit_gap = f"{data['avg_gap_days']:.1f}d"
     
     # Format active day gaps if available
+    metrics_parts = []
+    
+    # Basic metrics (always included)
+    metrics_parts.append(f"{day_ratio} days")
+    metrics_parts.append(f"{week_ratio} weeks")
+    metrics_parts.append(f"{streak} streak")
+    
+    # Gap metrics
     if 'avg_active_day_gap' in data:
         active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
-        return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {commit_gap}/{active_day_gap} gap)"
+        metrics_parts.append(f"{commit_gap}/{active_day_gap} gap")
     else:
-        return f"{color}★{score}/10{Style.RESET_ALL} ({day_ratio} days, {week_ratio} weeks, {streak} streak, {commit_gap} gap)"
+        metrics_parts.append(f"{commit_gap} gap")
+    
+    # Streak-to-gap ratio if available
+    if 'streak_gap_ratio' in data:
+        # Format as percentage of active vs inactive days
+        total_days = data['total_streak_days'] + data['total_gap_days']
+        active_pct = data['total_streak_days'] / total_days * 100 if total_days > 0 else 100
+        inactive_pct = 100 - active_pct
+        
+        streak_gap = f"{active_pct:.0f}%:{inactive_pct:.0f}%"
+        metrics_parts.append(f"active:inactive={streak_gap}")
+    
+    # Join all parts
+    metrics = ", ".join(metrics_parts)
+    
+    return f"{color}★{score}/10{Style.RESET_ALL} ({metrics})"
 
 def display_stats(stats, show_emails=False, is_merged=False):
     """Display the collected statistics in a formatted table."""
@@ -181,4 +204,10 @@ def display_stats(stats, show_emails=False, is_merged=False):
     print(f"\n{Fore.CYAN}Gap Metrics:{Style.RESET_ALL}")
     print(f"Format: commit_gap/active_day_gap")
     print(f"commit_gap: Average time between individual commits")
-    print(f"active_day_gap: Average time between days with at least one commit") 
+    print(f"active_day_gap: Average time between days with at least one commit")
+    
+    # Display streak-to-gap ratio explanation
+    print(f"\n{Fore.CYAN}Activity Ratio:{Style.RESET_ALL}")
+    print(f"Format: active:inactive=X%:Y%")
+    print(f"Shows the ratio of days spent in commit streaks vs. days with no activity")
+    print(f"Higher active percentage indicates more consistent development patterns") 

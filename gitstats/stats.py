@@ -300,10 +300,37 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     data['active_day_gaps'] = active_day_gaps
                     data['avg_active_day_gap'] = sum(active_day_gaps) / len(active_day_gaps)
                     data['max_active_day_gap'] = max(active_day_gaps)
+                    
+                    # Calculate streak-to-gap ratio
+                    total_streak_days = 0
+                    total_gap_days = 0
+                    current_streak = 1
+                    
+                    # Calculate streaks and gaps
+                    for i in range(1, len(sorted_active_days)):
+                        gap_days = (sorted_active_days[i] - sorted_active_days[i-1]).days
+                        
+                        if gap_days == 1:  # Consecutive days
+                            current_streak += 1
+                        else:  # Streak broken
+                            total_streak_days += current_streak
+                            total_gap_days += gap_days - 1  # -1 because the end date is counted in the next streak
+                            current_streak = 1
+                    
+                    # Add the last streak
+                    total_streak_days += current_streak
+                    
+                    # Calculate ratio
+                    data['total_streak_days'] = total_streak_days
+                    data['total_gap_days'] = total_gap_days
+                    data['streak_gap_ratio'] = total_streak_days / (total_gap_days + 1) if total_gap_days > 0 else total_streak_days
                 else:
                     data['active_day_gaps'] = []
                     data['avg_active_day_gap'] = 0
                     data['max_active_day_gap'] = 0
+                    data['total_streak_days'] = len(data['commit_days'])
+                    data['total_gap_days'] = 0
+                    data['streak_gap_ratio'] = len(data['commit_days'])
                 
                 # Calculate commit streak metrics
                 sorted_days = sorted(data['commit_days'].keys())

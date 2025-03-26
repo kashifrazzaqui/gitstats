@@ -228,9 +228,12 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         
         # Calculate commit frequency metrics for each developer
         for identity, data in stats.items():
-            if data['first_commit'] and data['last_commit']:
-                # Calculate total days in the date range
-                total_days = (data['last_commit'] - data['first_commit']).days + 1
+            if data['first_commit']:
+                # Get today's date for frequency calculations
+                today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                # Calculate total days from first commit to today (not just to last commit)
+                total_days = (today - data['first_commit']).days + 1
                 
                 # Calculate days with commits
                 days_with_commits = len(data['commit_days'])
@@ -254,8 +257,8 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                 
                 # Calculate months in the date range
                 first_month = data['first_commit'].year * 12 + data['first_commit'].month
-                last_month = data['last_commit'].year * 12 + data['last_commit'].month
-                total_months = last_month - first_month + 1
+                today_month = today.year * 12 + today.month
+                total_months = today_month - first_month + 1
                 data['total_months'] = total_months
                 data['months_with_commits'] = months_with_commits
                 data['commit_month_ratio'] = months_with_commits / total_months if total_months > 0 else 0

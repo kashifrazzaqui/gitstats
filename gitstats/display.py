@@ -65,50 +65,45 @@ def format_frequency_metrics(data):
     score = get_commit_frequency_score(data)
     color = get_frequency_color(score)
     
-    # Format metrics
-    day_ratio = f"{data['commit_day_ratio']*100:.1f}%"
-    week_ratio = f"{data['commit_week_ratio']*100:.1f}%"
+    # Format metrics - use even shorter format
+    day_ratio = f"{data['commit_day_ratio']*100:.0f}%"  # Removed decimal
+    week_ratio = f"{data['commit_week_ratio']*100:.0f}%"  # Removed decimal
     
     # Format streak
     streak = f"{data['max_streak']}d"
     
-    # Format gaps
-    commit_gap = f"{data['avg_gap_days']:.1f}d"
-    
     # Format active day gaps if available
     metrics_parts = []
     
-    # Basic metrics (always included)
-    metrics_parts.append(f"{day_ratio} days")
-    metrics_parts.append(f"{week_ratio} weeks")
-    metrics_parts.append(f"{streak} streak")
+    # Basic metrics (always included) - further shortened
+    metrics_parts.append(f"{day_ratio}D")  # No space
+    metrics_parts.append(f"{week_ratio}W")  # No space
+    metrics_parts.append(streak)
     
-    # Gap metrics
+    # Gap metrics - omit commit_gap and use more abbreviations
     if 'avg_active_day_gap' in data and 'avg_workday_gap' in data:
         active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
-        workday_gap = f"{data['avg_workday_gap']:.1f}wd"
-        metrics_parts.append(f"{commit_gap}/{active_day_gap}/{workday_gap} gap")
+        workday_gap = f"{data['avg_workday_gap']:.1f}w"  # Shorter
+        metrics_parts.append(f"{active_day_gap}/{workday_gap}")
     elif 'avg_active_day_gap' in data:
         active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
-        metrics_parts.append(f"{commit_gap}/{active_day_gap} gap")
-    else:
-        metrics_parts.append(f"{commit_gap} gap")
+        metrics_parts.append(active_day_gap)
     
-    # Streak-to-gap ratio if available
+    # Streak-to-gap ratio if available - shortened
     if 'streak_gap_ratio' in data:
         # Format as percentage of active vs inactive days
         total_days = data['total_streak_days'] + data['total_gap_days']
         active_pct = data['total_streak_days'] / total_days * 100 if total_days > 0 else 100
         inactive_pct = 100 - active_pct
         
-        streak_gap = f"{active_pct:.0f}%:{inactive_pct:.0f}%"
-        metrics_parts.append(f"active:inactive={streak_gap}")
+        streak_gap = f"{active_pct:.0f}:{inactive_pct:.0f}"  # Removed % symbols
+        metrics_parts.append(f"A:I={streak_gap}")
     
-    # Weekday commit ratio if available
+    # Weekday commit ratio if available - shortened
     if 'weekday_commit_ratio' in data:
         weekday_pct = data['weekday_commit_ratio'] * 100
         weekend_pct = 100 - weekday_pct
-        metrics_parts.append(f"weekday:weekend={weekday_pct:.0f}%:{weekend_pct:.0f}%")
+        metrics_parts.append(f"WD:WE={weekday_pct:.0f}:{weekend_pct:.0f}")  # Removed % symbols
     
     # Join all parts
     metrics = ", ".join(metrics_parts)
@@ -212,19 +207,18 @@ def display_stats(stats, show_emails=False, is_merged=False):
     
     # Display gap metrics explanation
     print(f"\n{Fore.CYAN}Gap Metrics:{Style.RESET_ALL}")
-    print(f"Format: commit_gap/active_day_gap/workday_gap")
-    print(f"commit_gap: Average time between individual commits")
+    print(f"Format: active_day_gap/workday_gap")
     print(f"active_day_gap: Average time between days with at least one commit")
     print(f"workday_gap: Average workdays (Mon-Fri) between commits")
     
     # Display streak-to-gap ratio explanation
     print(f"\n{Fore.CYAN}Activity Ratio:{Style.RESET_ALL}")
-    print(f"Format: active:inactive=X%:Y%")
+    print(f"Format: A:I=X:Y")
     print(f"Shows the ratio of days spent in commit streaks vs. days with no activity")
     print(f"Higher active percentage indicates more consistent development patterns")
     
     # Display workday metrics explanation
     print(f"\n{Fore.CYAN}Workday Metrics:{Style.RESET_ALL}")
-    print(f"Format: weekday:weekend=X%:Y%")
+    print(f"Format: WD:WE=X:Y")
     print(f"Shows the percentage of commits made on weekdays vs. weekends")
     print(f"Helps identify work patterns and whether development occurs during business hours") 

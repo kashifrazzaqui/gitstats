@@ -33,6 +33,15 @@ def normalize_email(email):
     
     return email
 
+def is_workday(date):
+    """Returns True if date is a weekday (Monday-Friday)."""
+    return date.weekday() < 5
+
+def count_workdays(start_date, end_date):
+    """Count workdays between two dates."""
+    days = (end_date - start_date).days
+    return sum(1 for i in range(days + 1) if is_workday(start_date + timedelta(days=i)))
+
 def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None):
     """
     Analyze a Git repository and return statistics per developer.
@@ -283,9 +292,35 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
                     gaps = [(sorted_dates[i+1] - sorted_dates[i]).total_seconds() / 86400 for i in range(len(sorted_dates)-1)]
                     data['avg_gap_days'] = sum(gaps) / len(gaps)
                     data['max_gap_days'] = max(gaps)
+                    
+                    # Calculate workday-aware metrics
+                    workday_gaps = []
+                    for i in range(len(sorted_dates)-1):
+                        start = sorted_dates[i]
+                        end = sorted_dates[i+1]
+                        workday_gap = count_workdays(start, end) - 1  # -1 because we don't count the commit day
+                        if workday_gap < 0:  # Handles same-day commits
+                            workday_gap = 0
+                        workday_gaps.append(workday_gap)
+                    
+                    data['workday_gaps'] = workday_gaps
+                    data['avg_workday_gap'] = sum(workday_gaps) / len(workday_gaps) if workday_gaps else 0
+                    
+                    # Calculate weekday vs weekend commit ratio
+                    weekday_commits = sum(1 for date in data['commit_dates'] if is_workday(date))
+                    total_commits = len(data['commit_dates'])
+                    data['weekday_commit_ratio'] = weekday_commits / total_commits if total_commits > 0 else 0
                 else:
                     data['avg_gap_days'] = 0
                     data['max_gap_days'] = 0
+                    data['workday_gaps'] = []
+                    data['avg_workday_gap'] = 0
+                    
+                    # For a single commit, set weekday ratio based on if it's a workday
+                    if data['commit_dates']:
+                        data['weekday_commit_ratio'] = 1.0 if is_workday(data['commit_dates'][0]) else 0.0
+                    else:
+                        data['weekday_commit_ratio'] = 0.0
                 
                 # Calculate daily aggregation gap metrics
                 if len(data['commit_days']) > 1:

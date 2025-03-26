@@ -84,7 +84,11 @@ def format_frequency_metrics(data):
     metrics_parts.append(f"{streak} streak")
     
     # Gap metrics
-    if 'avg_active_day_gap' in data:
+    if 'avg_active_day_gap' in data and 'avg_workday_gap' in data:
+        active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
+        workday_gap = f"{data['avg_workday_gap']:.1f}wd"
+        metrics_parts.append(f"{commit_gap}/{active_day_gap}/{workday_gap} gap")
+    elif 'avg_active_day_gap' in data:
         active_day_gap = f"{data['avg_active_day_gap']:.1f}d"
         metrics_parts.append(f"{commit_gap}/{active_day_gap} gap")
     else:
@@ -99,6 +103,12 @@ def format_frequency_metrics(data):
         
         streak_gap = f"{active_pct:.0f}%:{inactive_pct:.0f}%"
         metrics_parts.append(f"active:inactive={streak_gap}")
+    
+    # Weekday commit ratio if available
+    if 'weekday_commit_ratio' in data:
+        weekday_pct = data['weekday_commit_ratio'] * 100
+        weekend_pct = 100 - weekday_pct
+        metrics_parts.append(f"weekday:weekend={weekday_pct:.0f}%:{weekend_pct:.0f}%")
     
     # Join all parts
     metrics = ", ".join(metrics_parts)
@@ -202,12 +212,19 @@ def display_stats(stats, show_emails=False, is_merged=False):
     
     # Display gap metrics explanation
     print(f"\n{Fore.CYAN}Gap Metrics:{Style.RESET_ALL}")
-    print(f"Format: commit_gap/active_day_gap")
+    print(f"Format: commit_gap/active_day_gap/workday_gap")
     print(f"commit_gap: Average time between individual commits")
     print(f"active_day_gap: Average time between days with at least one commit")
+    print(f"workday_gap: Average workdays (Mon-Fri) between commits")
     
     # Display streak-to-gap ratio explanation
     print(f"\n{Fore.CYAN}Activity Ratio:{Style.RESET_ALL}")
     print(f"Format: active:inactive=X%:Y%")
     print(f"Shows the ratio of days spent in commit streaks vs. days with no activity")
-    print(f"Higher active percentage indicates more consistent development patterns") 
+    print(f"Higher active percentage indicates more consistent development patterns")
+    
+    # Display workday metrics explanation
+    print(f"\n{Fore.CYAN}Workday Metrics:{Style.RESET_ALL}")
+    print(f"Format: weekday:weekend=X%:Y%")
+    print(f"Shows the percentage of commits made on weekdays vs. weekends")
+    print(f"Helps identify work patterns and whether development occurs during business hours") 

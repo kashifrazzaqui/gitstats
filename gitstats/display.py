@@ -215,7 +215,7 @@ def display_stats(stats, show_emails=False, is_merged=False):
     print(f"\n{Fore.CYAN}Metrics Inside Parentheses:{Style.RESET_ALL}")
     print(f"• {Fore.YELLOW}X%D{Style.RESET_ALL}: Percentage of days with at least one commit during active period")
     print(f"• {Fore.YELLOW}X%W{Style.RESET_ALL}: Percentage of weeks with at least one commit during active period")
-    print(f"• {Fore.YELLOW}Xd{Style.RESET_ALL}: Longest consecutive days with commits (streak)")
+    print(f"• {Fore.YELLOW}Xd{Style.RESET_ALL}: Longest consecutive days with commits (streak, weekends discounted)")
     
     # Display gap metrics explanation
     print(f"\n{Fore.CYAN}Gap Metrics (Xd/Yw):{Style.RESET_ALL}")

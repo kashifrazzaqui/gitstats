@@ -272,7 +272,14 @@ def merge_stats(stats_list):
                     prev_day = datetime.strptime(sorted_days[i-1], '%Y-%m-%d')
                     curr_day = datetime.strptime(sorted_days[i], '%Y-%m-%d')
                     
-                    if (curr_day - prev_day).days == 1:
+                    # Calculate days difference
+                    days_diff = (curr_day - prev_day).days
+                    
+                    # Check if consecutive or over a weekend (Friday to Monday = 3 days)
+                    # Friday is weekday 4, Monday is weekday 0
+                    is_over_weekend = days_diff <= 3 and prev_day.weekday() == 4 and curr_day.weekday() == 0
+                    
+                    if days_diff == 1 or is_over_weekend:
                         current_streak += 1
                         max_streak = max(max_streak, current_streak)
                     else:

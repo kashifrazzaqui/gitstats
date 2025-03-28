@@ -222,9 +222,8 @@ For each developer, GitStats tracks and displays:
 - **Days with Commits**: Number of unique days with at least one commit
 - **Weeks with Commits**: Number of unique weeks with at least one commit
 - **Months with Commits**: Number of unique months with at least one commit
-- **Commit Streak**: Longest consecutive days with commits
+- **Commit Streak**: Longest consecutive days with commits (weekends discounted - Friday to Monday counts as consecutive)
 - **Gap Metrics**: 
-  - **Commit Gap**: Average time between individual commits in days
   - **Active Day Gap**: Average time between days with at least one commit
   - **Workday Gap**: Average workdays (Monday-Friday) between commits
 - **Activity Ratio**: Percentage of days spent in commit streaks vs. days with no activity

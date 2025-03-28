@@ -199,26 +199,46 @@ def display_stats(stats, show_emails=False, is_merged=False):
     print(f"Total Commits: {total_commits}")
     print(f"Code Impact: +{total_lines_added}/-{total_lines_deleted}")
     
-    # Display frequency legend
-    print(f"\n{Fore.CYAN}Commit Frequency Score Legend:{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}★8-10{Style.RESET_ALL}: Excellent - Very consistent commit pattern")
-    print(f"{Fore.YELLOW}★5-7{Style.RESET_ALL}: Good - Regular commits with some gaps")
+    # Display more detailed explanations of the metrics
+    print(f"\n{Fore.CYAN}Commit Frequency Column Explained:{Style.RESET_ALL}")
+    print(f"Format: ★score/10 (metrics)")
+    print(f"The commit frequency score and metrics help evaluate developer engagement and consistency.")
+    
+    # Explain the score
+    print(f"\n{Fore.CYAN}Score Calculation:{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}★8-10{Style.RESET_ALL}: Excellent - Very consistent, daily or near-daily commits")
+    print(f"{Fore.YELLOW}★5-7{Style.RESET_ALL}: Good - Regular commit pattern with some gaps")
     print(f"{Fore.RED}★0-4{Style.RESET_ALL}: Needs improvement - Infrequent or irregular commits")
+    print(f"Score formula: 50% day coverage + 30% week coverage + 20% streak length - gap penalty")
+    
+    # Detailed explanation of metrics inside the parentheses
+    print(f"\n{Fore.CYAN}Metrics Inside Parentheses:{Style.RESET_ALL}")
+    print(f"• {Fore.YELLOW}X%D{Style.RESET_ALL}: Percentage of days with at least one commit during active period")
+    print(f"• {Fore.YELLOW}X%W{Style.RESET_ALL}: Percentage of weeks with at least one commit during active period")
+    print(f"• {Fore.YELLOW}Xd{Style.RESET_ALL}: Longest consecutive days with commits (streak)")
     
     # Display gap metrics explanation
-    print(f"\n{Fore.CYAN}Gap Metrics:{Style.RESET_ALL}")
-    print(f"Format: active_day_gap/workday_gap")
-    print(f"active_day_gap: Average time between days with at least one commit")
-    print(f"workday_gap: Average workdays (Mon-Fri) between commits")
+    print(f"\n{Fore.CYAN}Gap Metrics (Xd/Yw):{Style.RESET_ALL}")
+    print(f"• {Fore.YELLOW}Xd{Style.RESET_ALL}: Average time between days with at least one commit")
+    print(f"• {Fore.YELLOW}Yw{Style.RESET_ALL}: Average workdays (Mon-Fri) between commits")
     
     # Display streak-to-gap ratio explanation
-    print(f"\n{Fore.CYAN}Activity Ratio:{Style.RESET_ALL}")
-    print(f"Format: A:I=X:Y")
-    print(f"Shows the ratio of days spent in commit streaks vs. days with no activity")
-    print(f"Higher active percentage indicates more consistent development patterns")
+    print(f"\n{Fore.CYAN}Activity Ratio (A:I=X:Y):{Style.RESET_ALL}")
+    print(f"• Shows the percentage split between active days (A) and inactive days (I)")
+    print(f"• {Fore.YELLOW}X{Style.RESET_ALL}: Percentage of days in active streaks")
+    print(f"• {Fore.YELLOW}Y{Style.RESET_ALL}: Percentage of days with no activity")
+    print(f"• Higher active percentage indicates more consistent work patterns")
     
     # Display workday metrics explanation
-    print(f"\n{Fore.CYAN}Workday Metrics:{Style.RESET_ALL}")
-    print(f"Format: WD:WE=X:Y")
-    print(f"Shows the percentage of commits made on weekdays vs. weekends")
-    print(f"Helps identify work patterns and whether development occurs during business hours") 
+    print(f"\n{Fore.CYAN}Workday Metrics (WD:WE=X:Y):{Style.RESET_ALL}")
+    print(f"• Shows the split between weekday and weekend commits")
+    print(f"• {Fore.YELLOW}X{Style.RESET_ALL}: Percentage of commits made on weekdays (Monday-Friday)")
+    print(f"• {Fore.YELLOW}Y{Style.RESET_ALL}: Percentage of commits made on weekends")
+    print(f"• Helps identify work patterns and business hours commitment")
+    
+    # Explain the other columns
+    print(f"\n{Fore.CYAN}Other Columns:{Style.RESET_ALL}")
+    print(f"• {Fore.YELLOW}Developer{Style.RESET_ALL}: Primary name with alternatives in parentheses")
+    print(f"• {Fore.YELLOW}Commits{Style.RESET_ALL}: Total number of commits in the analyzed period")
+    print(f"• {Fore.YELLOW}Activity Period{Style.RESET_ALL}: Time range from first to last commit")
+    print(f"• {Fore.YELLOW}Code Impact{Style.RESET_ALL}: Lines added/removed across all commits") 

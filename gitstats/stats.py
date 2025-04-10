@@ -11,7 +11,11 @@ from datetime import datetime, timedelta
 import git
 from colorama import Fore, Style
 
-from .identity import load_identity_mappings, get_canonical_identity
+from .identity import (
+    load_identity_mappings, 
+    get_canonical_identity,
+    get_excluded_developers
+)
 
 def normalize_email(email):
     """Normalize email address to handle common variations."""
@@ -42,7 +46,7 @@ def count_workdays(start_date, end_date):
     days = (end_date - start_date).days
     return sum(1 for i in range(days + 1) if is_workday(start_date + timedelta(days=i)))
 
-def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None):
+def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None, exclude_developers=None):
     """
     Analyze a Git repository and return statistics per developer.
     
@@ -52,6 +56,7 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         until: Only consider commits older than this date
         branch: Analyze only a specific branch
         exclude: List of file patterns to exclude
+        exclude_developers: List of developer names or emails to exclude (in addition to configured exclusions)
         
     Returns:
         Dictionary with developer statistics
@@ -67,6 +72,20 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
     
     # Load identity mappings for this repository
     identity_mappings = load_identity_mappings(repo_path)
+    
+    # Get excluded developers from config and combine with any provided via command line
+    config_excluded_developers = get_excluded_developers(repo_path)
+    
+    # Prepare exclude_developers list
+    if exclude_developers is None:
+        exclude_developers = []
+    
+    # Combine both exclusion lists and convert to lowercase for case-insensitive comparison
+    all_excluded_developers = [dev.lower() for dev in (exclude_developers + config_excluded_developers)]
+    
+    # Print info about excluded developers if any
+    if all_excluded_developers:
+        print(f"{Fore.YELLOW}Excluding {len(all_excluded_developers)} developer(s) from analysis{Style.RESET_ALL}")
     
     # Initialize stats dictionary
     # Use canonical identity as the primary key to avoid duplication of developers
@@ -94,8 +113,18 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
         author_name = commit.author.name
         author_email = normalize_email(commit.author.email)
         
+        # Skip excluded developers
+        if (author_name.lower() in all_excluded_developers or 
+            author_email.lower() in all_excluded_developers or 
+            commit.author.email.lower() in all_excluded_developers):
+            continue
+        
         # Get the canonical identity for this author
         canonical_identity = get_canonical_identity(identity_mappings, author_name, author_email)
+        
+        # Skip if the canonical identity is in the exclude list
+        if canonical_identity.lower() in all_excluded_developers:
+            continue
         
         # Map this email to this author
         if author_email not in email_to_author:
@@ -171,8 +200,18 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None)
             raw_email = commit.author.email
             author_email = normalize_email(raw_email)
             
+            # Skip excluded developers
+            if (author_name.lower() in all_excluded_developers or 
+                author_email.lower() in all_excluded_developers or 
+                raw_email.lower() in all_excluded_developers):
+                continue
+            
             # Get the canonical identity for this author
             canonical_identity = get_canonical_identity(identity_mappings, author_name, author_email)
+            
+            # Skip if the canonical identity is in the exclude list
+            if canonical_identity.lower() in all_excluded_developers:
+                continue
             
             # Use the consolidated email as the key
             canonical_email = consolidated_emails.get(author_email, author_email)

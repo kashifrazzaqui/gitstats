@@ -12,7 +12,10 @@ from .identity import (
     add_identity_mapping,
     remove_identity_mapping,
     list_identity_mappings,
-    get_identity_file
+    get_identity_file,
+    exclude_developer,
+    include_developer,
+    get_excluded_developers
 )
 
 def handle_identity_command(args):
@@ -59,6 +62,29 @@ def handle_identity_command(args):
             print(f"\n{Fore.CYAN}Email mappings:{Style.RESET_ALL}")
             email_table = [[email, canonical] for email, canonical in mappings['canonical_emails'].items()]
             print(tabulate(email_table, headers=["Email", "Canonical Identity"], tablefmt="grid"))
+        
+        # Display excluded developers
+        excluded_developers = get_excluded_developers(args.repo_path)
+        if excluded_developers:
+            print(f"\n{Fore.CYAN}Excluded developers:{Style.RESET_ALL}")
+            excluded_table = [[dev] for dev in excluded_developers]
+            print(tabulate(excluded_table, headers=["Name/Email"], tablefmt="grid"))
+    
+    elif args.identity_command == 'exclude':
+        # Exclude a developer from analysis
+        if exclude_developer(args.repo_path, args.name_or_email):
+            print(f"{Fore.GREEN}Successfully excluded developer '{args.name_or_email}' from analysis.{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}Failed to exclude developer.{Style.RESET_ALL}")
+            sys.exit(1)
+    
+    elif args.identity_command == 'include':
+        # Include a previously excluded developer
+        if include_developer(args.repo_path, args.name_or_email):
+            print(f"{Fore.GREEN}Successfully included developer '{args.name_or_email}' in analysis.{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}Failed to include developer.{Style.RESET_ALL}")
+            sys.exit(1)
     
     else:
         print(f"{Fore.RED}Unknown identity command: {args.identity_command}{Style.RESET_ALL}")
@@ -117,6 +143,34 @@ def setup_identity_parser(subparsers):
     list_parser.add_argument(
         'repo_path',
         help='Path to the Git repository'
+    )
+    
+    # Exclude command
+    exclude_parser = identity_subparsers.add_parser(
+        'exclude',
+        help='Exclude a developer from analysis'
+    )
+    exclude_parser.add_argument(
+        'repo_path',
+        help='Path to the Git repository'
+    )
+    exclude_parser.add_argument(
+        'name_or_email',
+        help='Developer name or email address to exclude'
+    )
+    
+    # Include command
+    include_parser = identity_subparsers.add_parser(
+        'include',
+        help='Include a previously excluded developer in analysis'
+    )
+    include_parser.add_argument(
+        'repo_path',
+        help='Path to the Git repository'
+    )
+    include_parser.add_argument(
+        'name_or_email',
+        help='Developer name or email address to include'
     )
     
     # Set the handler function

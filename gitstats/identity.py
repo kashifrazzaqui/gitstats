@@ -38,7 +38,8 @@ def load_identity_mappings(repo_path):
     # Initialize empty mappings
     mappings = {
         'canonical_names': {},  # Maps author identifiers to canonical names
-        'canonical_emails': {}  # Maps email addresses to canonical emails
+        'canonical_emails': {},  # Maps email addresses to canonical emails
+        'excluded_developers': []  # List of developers to exclude from analysis
     }
     
     # Load mappings from file if it exists
@@ -116,4 +117,45 @@ def get_canonical_identity(mappings, name, email):
         return mappings['canonical_names'][name]
     
     # No mapping found, use the original name
-    return name 
+    return name
+
+def exclude_developer(repo_path, name_or_email):
+    """Add a developer to the exclusion list."""
+    # Load existing mappings
+    mappings = load_identity_mappings(repo_path)
+    
+    # Ensure the excluded_developers key exists
+    if 'excluded_developers' not in mappings:
+        mappings['excluded_developers'] = []
+    
+    # Add to excluded developers list if not already present
+    if name_or_email not in mappings['excluded_developers']:
+        mappings['excluded_developers'].append(name_or_email)
+    
+    # Save the updated mappings
+    return save_identity_mappings(repo_path, mappings)
+
+def include_developer(repo_path, name_or_email):
+    """Remove a developer from the exclusion list."""
+    # Load existing mappings
+    mappings = load_identity_mappings(repo_path)
+    
+    # Ensure the excluded_developers key exists
+    if 'excluded_developers' not in mappings:
+        mappings['excluded_developers'] = []
+        return save_identity_mappings(repo_path, mappings)
+    
+    # Remove from excluded developers list if present
+    if name_or_email in mappings['excluded_developers']:
+        mappings['excluded_developers'].remove(name_or_email)
+    
+    # Save the updated mappings
+    return save_identity_mappings(repo_path, mappings)
+
+def get_excluded_developers(repo_path):
+    """Get the list of excluded developers."""
+    # Load mappings
+    mappings = load_identity_mappings(repo_path)
+    
+    # Return the excluded developers list, or an empty list if not found
+    return mappings.get('excluded_developers', []) 

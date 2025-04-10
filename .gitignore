@@ -57,3 +57,6 @@ venv.bak/
 # OS specific files
 .DS_Store
 Thumbs.db 
+
+# Others
+blog.md

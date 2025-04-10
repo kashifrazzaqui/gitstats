@@ -64,6 +64,11 @@ def parse_args():
         help="Show email addresses in the output table",
         action="store_true"
     )
+    stats_parser.add_argument(
+        "--exclude-developers", 
+        help="Comma-separated list of developer names or emails to exclude from analysis",
+        default=""
+    )
     stats_parser.set_defaults(func=handle_stats_command)
     
     # For backward compatibility, also allow the repo_path as a positional argument
@@ -298,6 +303,25 @@ def merge_stats(stats_list):
 
 def handle_stats_command(args):
     """Handle the stats command."""
+    # For backward compatibility, handle positional argument
+    if args.repo_path_positional and not args.repo_paths:
+        args.repo_paths = [args.repo_path_positional]
+    
+    # Check if we have at least one repo
+    if not args.repo_paths:
+        print(f"{Fore.RED}Error: You must specify at least one repository path.{Style.RESET_ALL}")
+        sys.exit(1)
+    
+    # Parse excluded file patterns
+    excluded_patterns = [pattern.strip() for pattern in args.exclude.split(',') if pattern.strip()]
+    
+    # Parse excluded developers
+    excluded_developers = [dev.strip() for dev in args.exclude_developers.split(',') if dev.strip()]
+    
+    # Determine date range
+    since = args.since
+    until = args.until
+    
     # Check if we should limit to last 30 days
     if not args.all_commits and not args.since:
         # Calculate date 30 days ago
@@ -327,20 +351,23 @@ def handle_stats_command(args):
     if filters:
         print(f"{Fore.CYAN}Filters: {', '.join(filters)}{Style.RESET_ALL}")
     
-    # Get stats for each repository
+    # Process each repository
     stats_list = []
     for repo_path in args.repo_paths:
+        print(f"\n{Fore.CYAN}Analyzing repository: {repo_path}{Style.RESET_ALL}")
         try:
             repo_stats = get_repo_stats(
-                repo_path,
-                since=args.since,
-                until=args.until,
-                branch=args.branch,
-                exclude=args.exclude
+                repo_path, 
+                since=since, 
+                until=until, 
+                branch=args.branch, 
+                exclude=excluded_patterns,
+                exclude_developers=excluded_developers
             )
             stats_list.append(repo_stats)
         except Exception as e:
             print(f"{Fore.RED}Error analyzing repository {repo_path}: {str(e)}{Style.RESET_ALL}")
+            continue
     
     # Merge stats if we have multiple repositories
     if len(stats_list) > 1:

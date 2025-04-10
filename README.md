@@ -75,6 +75,7 @@ gitstats stats /path/to/git/repository --all-commits
 - `--branch`: Analyze only a specific branch
 - `--exclude`: Comma-separated list of file patterns to exclude
 - `--show-emails`: Show email addresses in the output table to help debug name consolidation issues
+- `--exclude-developers`: Comma-separated list of developer names or emails to exclude from analysis
 
 ### Examples
 
@@ -101,6 +102,11 @@ gitstats stats /path/to/repo --branch=main
 Exclude certain file types:
 ```
 gitstats stats /path/to/repo --exclude=.json,.md,node_modules
+```
+
+Exclude specific developers:
+```
+gitstats stats /path/to/repo --exclude-developers="John Doe,jane@example.com"
 ```
 
 Show email addresses to debug name consolidation:
@@ -164,6 +170,12 @@ For more precise control over identity consolidation, GitStats provides commands
 # Add an identity mapping (map a name or email to a canonical identity)
 gitstats identity add /path/to/repo "rcallihan" "Ryan Callihan"
 gitstats identity add /path/to/repo "ryancallihan@gmail.com" "Ryan Callihan"
+
+# Exclude a developer from analysis
+gitstats identity exclude /path/to/repo "bot@example.com"
+
+# Include a previously excluded developer
+gitstats identity include /path/to/repo "bot@example.com"
 
 # List all identity mappings for a repository
 gitstats identity list /path/to/repo

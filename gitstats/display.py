@@ -110,7 +110,7 @@ def format_frequency_metrics(data):
     
     return f"{color}★{score}/10{Style.RESET_ALL} ({metrics})"
 
-def display_stats(stats, show_emails=False, is_merged=False):
+def display_stats(stats, show_emails=False, is_merged=False, overall_start_date=None):
     """Display the collected statistics in a formatted table."""
     if not stats:
         print(f"{Fore.YELLOW}No commits found matching the criteria.{Style.RESET_ALL}")
@@ -194,7 +194,17 @@ def display_stats(stats, show_emails=False, is_merged=False):
     total_lines_added = sum(data['lines_added'] for data in stats.values())
     total_lines_deleted = sum(data['lines_deleted'] for data in stats.values())
     
-    print(f"\n{Fore.GREEN}Summary:{Style.RESET_ALL}")
+    # Determine the start date for the summary
+    if overall_start_date:
+        start_date_info = f" since {overall_start_date.strftime('%Y-%m-%d')}"
+    elif stats:
+        # Find the earliest first commit among displayed developers
+        earliest_first_commit = min(d['first_commit'] for d in stats.values() if d['first_commit'])
+        start_date_info = f" since {earliest_first_commit.strftime('%Y-%m-%d')}"
+    else:
+        start_date_info = ""
+        
+    print(f"\n{Fore.GREEN}Summary{start_date_info}:{Style.RESET_ALL}")
     print(f"Total Developers: {len(stats)}")
     print(f"Total Commits: {total_commits}")
     print(f"Code Impact: +{total_lines_added}/-{total_lines_deleted}")

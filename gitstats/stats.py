@@ -165,34 +165,30 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
     # Use GitPython's built-in commit iteration instead of git log
     # This should handle dates correctly
     try:
-        # Determine which commits to analyze
+        # Determine commit range arguments for iter_commits
+        iter_args = {'no_merges': True}
         if branch:
-            try:
-                commits = list(repo.iter_commits(branch, no_merges=True))
-            except git.exc.GitCommandError:
-                print(f"{Fore.RED}Error: Branch '{branch}' not found.{Style.RESET_ALL}")
-                sys.exit(1)
+            iter_args['rev'] = branch
         else:
-            commits = list(repo.iter_commits('--all', no_merges=True))
+            iter_args['rev'] = '--all'
         
-        # Apply date filters if specified
-        if since or until:
-            filtered_commits = []
-            for commit in commits:
-                commit_date = datetime.fromtimestamp(commit.committed_date)
-                
-                if since:
-                    since_date = datetime.strptime(since, '%Y-%m-%d')
-                    if commit_date < since_date:
-                        continue
-                        
-                if until:
-                    until_date = datetime.strptime(until, '%Y-%m-%d')
-                    if commit_date > until_date:
-                        continue
-                        
-                filtered_commits.append(commit)
-            commits = filtered_commits
+        if since:
+            iter_args['since'] = since
+        if until:
+            iter_args['until'] = until
+
+        try:
+            # Directly filter commits using GitPython arguments
+            commits = list(repo.iter_commits(**iter_args))
+        except git.exc.GitCommandError as e:
+            # Handle potential errors like invalid branch names or date formats
+            if branch and f"'{branch}'" in str(e):
+                 print(f"{Fore.RED}Error: Branch '{branch}' not found.{Style.RESET_ALL}")
+            elif 'fatal: invalid date format' in str(e):
+                 print(f"{Fore.RED}Error: Invalid date format for --since or --until. Please use YYYY-MM-DD.{Style.RESET_ALL}")
+            else:
+                 print(f"{Fore.RED}Error iterating commits: {str(e)}{Style.RESET_ALL}")
+            sys.exit(1)
         
         # Process each commit
         for commit in commits:

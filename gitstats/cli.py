@@ -83,7 +83,7 @@ def parse_args():
     
     return parser.parse_args()
 
-def merge_stats(stats_list):
+def merge_stats(stats_list, since):
     """Merge statistics from multiple repositories."""
     # Initialize merged stats
     merged_stats = defaultdict(lambda: {
@@ -137,53 +137,69 @@ def merge_stats(stats_list):
     # Get today's date for frequency calculations
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Recalculate frequency metrics for each developer
+    # Get the start date for calculations (either the overall first commit or the 'since' date)
+    valid_stats = [data for data in merged_stats.values() if data['first_commit']]
+    if not valid_stats:
+        return dict(merged_stats), None # Return if no valid stats
+        
+    overall_start_date = min(data['first_commit'] for data in valid_stats)
+    
+    # If a 'since' date was provided, use it as the start for the overall period
+    if since:
+        period_start_date = max(overall_start_date, datetime.strptime(since, '%Y-%m-%d'))
+    else:
+        period_start_date = overall_start_date
+
+    # Calculate overall duration for frequency scores
+    overall_total_days = (today - period_start_date).days + 1
+    
+    # Calculate overall total weeks
+    first_week = period_start_date.isocalendar()[1]
+    first_year = period_start_date.isocalendar()[0]
+    today_week = today.isocalendar()[1]
+    today_year = today.isocalendar()[0]
+    
+    if first_year == today_year:
+        overall_total_weeks = today_week - first_week + 1
+    else:
+        years_between = today_year - first_year - 1
+        weeks_in_first_year = datetime(first_year, 12, 28).isocalendar()[1] - first_week + 1
+        weeks_in_last_year = today_week
+        overall_total_weeks = weeks_in_first_year + (years_between * 52) + weeks_in_last_year
+    
+    # Recalculate frequency metrics for each developer using the overall period
     for identity, data in merged_stats.items():
         if data['first_commit']:
-            # Calculate total days from first commit to today (not just to last commit)
-            total_days = (today - data['first_commit']).days + 1
-            
-            # Calculate days with commits
+            # Days with commits
             days_with_commits = len(data['commit_days'])
             
-            # Calculate weeks with commits
+            # Weeks with commits
             weeks_with_commits = len(data['commit_weeks'])
             
-            # Calculate months with commits
+            # Months with commits
             months_with_commits = len(data['commit_months'])
             
-            # Calculate commit frequency metrics
-            data['total_days'] = total_days
+            # Calculate ratios based on the overall period duration
+            data['total_days'] = overall_total_days
             data['days_with_commits'] = days_with_commits
-            data['commit_day_ratio'] = days_with_commits / total_days if total_days > 0 else 0
+            data['commit_day_ratio'] = days_with_commits / overall_total_days if overall_total_days > 0 else 0
             
-            # Calculate weeks in the date range using ISO calendar weeks
-            first_week = data['first_commit'].isocalendar()[1]
-            first_year = data['first_commit'].isocalendar()[0]
-            today_week = today.isocalendar()[1]
-            today_year = today.isocalendar()[0]
-            
-            # Calculate total weeks between first commit and today
-            if first_year == today_year:
-                total_weeks = today_week - first_week + 1
-            else:
-                # Handle spanning multiple years
-                years_between = today_year - first_year - 1  # Years between (not including first and last)
-                weeks_in_first_year = datetime(first_year, 12, 28).isocalendar()[1] - first_week + 1  # Weeks from first week to end of year
-                weeks_in_last_year = today_week  # Weeks from start of year to today
-                total_weeks = weeks_in_first_year + (years_between * 52) + weeks_in_last_year
-            
-            data['total_weeks'] = total_weeks
+            data['total_weeks'] = overall_total_weeks
             data['weeks_with_commits'] = weeks_with_commits
-            data['commit_week_ratio'] = weeks_with_commits / total_weeks if total_weeks > 0 else 0
+            data['commit_week_ratio'] = weeks_with_commits / overall_total_weeks if overall_total_weeks > 0 else 0
             
-            # Calculate months in the date range
-            first_month = data['first_commit'].year * 12 + data['first_commit'].month
-            today_month = today.year * 12 + today.month
-            total_months = today_month - first_month + 1
-            data['total_months'] = total_months
-            data['months_with_commits'] = months_with_commits
-            data['commit_month_ratio'] = months_with_commits / total_months if total_months > 0 else 0
+            # Month ratio calculation (using developer's active period is more relevant)
+            if data['last_commit']:
+                dev_first_month = data['first_commit'].year * 12 + data['first_commit'].month
+                dev_last_month = data['last_commit'].year * 12 + data['last_commit'].month
+                dev_total_months = dev_last_month - dev_first_month + 1
+                data['total_months'] = dev_total_months
+                data['months_with_commits'] = months_with_commits
+                data['commit_month_ratio'] = months_with_commits / dev_total_months if dev_total_months > 0 else 0
+            else:
+                data['total_months'] = 0
+                data['months_with_commits'] = 0
+                data['commit_month_ratio'] = 0
             
             # Calculate average gap between commits
             if len(data['commit_dates']) > 1:
@@ -299,7 +315,7 @@ def merge_stats(stats_list):
             name_counter = Counter(data['name'])
             data['display_name'] = name_counter.most_common(1)[0][0]
     
-    return dict(merged_stats)
+    return dict(merged_stats), overall_start_date
 
 def handle_stats_command(args):
     """Handle the stats command."""
@@ -322,32 +338,24 @@ def handle_stats_command(args):
     since = args.since
     until = args.until
     
-    # Check if we should limit to last 30 days
-    if not args.all_commits and not args.since:
-        # Calculate date 30 days ago
-        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-        args.since = thirty_days_ago
-        print(f"{Fore.CYAN}Note: Only analyzing commits from the last 30 days. Use --all-commits to analyze all commits.{Style.RESET_ALL}")
+    # Set default date range to last 30 days if not otherwise specified
+    if not args.all_commits and not since:
+        since = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        print(f"{Fore.YELLOW}Note: Only analyzing commits from the last 30 days. Use --all-commits to analyze all commits.{Style.RESET_ALL}")
     
-    # Check if we have multiple repositories
-    if len(args.repo_paths) > 1:
-        print(f"{Fore.CYAN}Analyzing {len(args.repo_paths)} Git repositories:{Style.RESET_ALL}")
-        for repo_path in args.repo_paths:
-            print(f"  - {repo_path}")
-    else:
-        print(f"{Fore.CYAN}Analyzing Git repository at: {args.repo_paths[0]}{Style.RESET_ALL}")
-    
-    # Display filters if any
+    # Print information about filters
     filters = []
-    if args.since:
-        filters.append(f"since {args.since}")
-    if args.until:
-        filters.append(f"until {args.until}")
+    if since:
+        filters.append(f"since {since}")
+    if until:
+        filters.append(f"until {until}")
     if args.branch:
-        filters.append(f"branch '{args.branch}'")
-    if args.exclude:
-        filters.append(f"excluding {args.exclude}")
-        
+        filters.append(f"branch {args.branch}")
+    if excluded_patterns:
+        filters.append(f"excluding {len(excluded_patterns)} patterns")
+    if excluded_developers:
+        filters.append(f"excluding {len(excluded_developers)} cmdline developers")
+    
     if filters:
         print(f"{Fore.CYAN}Filters: {', '.join(filters)}{Style.RESET_ALL}")
     
@@ -371,12 +379,13 @@ def handle_stats_command(args):
     
     # Merge stats if we have multiple repositories
     if len(stats_list) > 1:
-        merged_stats = merge_stats(stats_list)
-        display_stats(merged_stats, show_emails=args.show_emails, is_merged=True)
-    elif len(stats_list) == 1:
+        merged_stats, overall_start_date = merge_stats(stats_list, args.since)
+        display_stats(merged_stats, show_emails=args.show_emails, is_merged=True, overall_start_date=overall_start_date)
+    elif stats_list:
+        # If only one repository, display its stats directly
         display_stats(stats_list[0], show_emails=args.show_emails)
     else:
-        print(f"{Fore.RED}No valid repositories to analyze.{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}No commits found matching the criteria.{Style.RESET_ALL}")
 
 def main():
     """Main function to run the script."""

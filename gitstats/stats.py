@@ -46,7 +46,7 @@ def count_workdays(start_date, end_date):
     days = (end_date - start_date).days
     return sum(1 for i in range(days + 1) if is_workday(start_date + timedelta(days=i)))
 
-def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None, exclude_developers=None):
+def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None, exclude_developers=None, verbose=False):
     """
     Analyze a Git repository and return statistics per developer.
     
@@ -57,6 +57,7 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
         branch: Analyze only a specific branch
         exclude: List of file patterns to exclude
         exclude_developers: List of developer names or emails to exclude (in addition to configured exclusions)
+        verbose: Whether to print detailed debug information
         
     Returns:
         Dictionary with developer statistics
@@ -102,7 +103,8 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
         'commit_dates': [],  # Store all commit dates for frequency analysis
         'commit_days': Counter(),  # Count commits per day
         'commit_weeks': Counter(),  # Count commits per week
-        'commit_months': Counter()  # Count commits per month
+        'commit_months': Counter(),  # Count commits per month
+        'commit_hashes': []  # Store commit hashes for duplicate detection
     })
     
     # First pass: collect all author names and emails to build a mapping
@@ -190,6 +192,9 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
                  print(f"{Fore.RED}Error iterating commits: {str(e)}{Style.RESET_ALL}")
             sys.exit(1)
         
+        if verbose:
+            print(f"\n{Fore.CYAN}Detailed commit information for {repo_path}:{Style.RESET_ALL}")
+            
         # Process each commit
         for commit in commits:
             author_name = commit.author.name
@@ -200,6 +205,8 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
             if (author_name.lower() in all_excluded_developers or 
                 author_email.lower() in all_excluded_developers or 
                 raw_email.lower() in all_excluded_developers):
+                if verbose:
+                    print(f"{Fore.YELLOW}Skipping excluded commit: {commit.hexsha[:7]} by {author_name} <{raw_email}>{Style.RESET_ALL}")
                 continue
             
             # Get the canonical identity for this author
@@ -207,12 +214,17 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
             
             # Skip if the canonical identity is in the exclude list
             if canonical_identity.lower() in all_excluded_developers:
+                if verbose:
+                    print(f"{Fore.YELLOW}Skipping excluded canonical identity: {commit.hexsha[:7]} by {canonical_identity} (via {author_name}){Style.RESET_ALL}")
                 continue
-            
+                
             # Use the consolidated email as the key
             canonical_email = consolidated_emails.get(author_email, author_email)
             
             commit_date = datetime.fromtimestamp(commit.committed_date)
+            
+            if verbose:
+                print(f"Processing commit: {commit.hexsha[:7]} | {commit_date.strftime('%Y-%m-%d')} | {author_name} -> {canonical_identity}")
             
             # Update author information
             stats[canonical_identity]['name'].add(author_name)
@@ -221,6 +233,7 @@ def get_repo_stats(repo_path, since=None, until=None, branch=None, exclude=None,
             # Update commit count and dates
             stats[canonical_identity]['commits'] += 1
             stats[canonical_identity]['commit_dates'].append(commit_date)
+            stats[canonical_identity]['commit_hashes'].append(commit.hexsha)
             
             # Track commit frequency by day, week, and month
             day_key = commit_date.strftime('%Y-%m-%d')

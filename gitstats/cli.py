@@ -69,6 +69,11 @@ def parse_args():
         help="Comma-separated list of developer names or emails to exclude from analysis",
         default=""
     )
+    stats_parser.add_argument(
+        "--verbose", 
+        help="Show detailed debug information during analysis",
+        action="store_true"
+    )
     stats_parser.set_defaults(func=handle_stats_command)
     
     # For backward compatibility, also allow the repo_path as a positional argument
@@ -83,7 +88,7 @@ def parse_args():
     
     return parser.parse_args()
 
-def merge_stats(stats_list, since):
+def merge_stats(stats_list, since, verbose=False):
     """Merge statistics from multiple repositories."""
     # Initialize merged stats
     merged_stats = defaultdict(lambda: {
@@ -103,12 +108,34 @@ def merge_stats(stats_list, since):
     })
     
     # Merge stats from each repository
+    repo_index = 0
+    commit_hash_tracker = defaultdict(list)  # Track commit hashes to detect duplicates
+    
     for stats in stats_list:
+        repo_index += 1
+        
+        if verbose:
+            print(f"\n{Fore.CYAN}Merging stats from repository #{repo_index}:{Style.RESET_ALL}")
+            
         for identity, data in stats.items():
+            if verbose:
+                print(f"  Processing developer: {identity} - {data['commits']} commits")
+                
             # Merge basic stats
             merged_stats[identity]['name'].update(data['name'] if isinstance(data['name'], set) else {data['name']})
             merged_stats[identity]['email'].update(data['email'] if isinstance(data['email'], set) else {data['email']})
+            
+            prev_commits = merged_stats[identity]['commits']
             merged_stats[identity]['commits'] += data['commits']
+            
+            if verbose:
+                print(f"    Adding {data['commits']} commits -> new total: {merged_stats[identity]['commits']}")
+            
+            # Track individual commit hashes if available
+            if 'commit_hashes' in data:
+                for commit_hash in data['commit_hashes']:
+                    commit_hash_tracker[commit_hash].append((repo_index, identity))
+                
             merged_stats[identity]['lines_added'] += data['lines_added']
             merged_stats[identity]['lines_deleted'] += data['lines_deleted']
             merged_stats[identity]['net_lines'] += data['net_lines']
@@ -315,6 +342,22 @@ def merge_stats(stats_list, since):
             name_counter = Counter(data['name'])
             data['display_name'] = name_counter.most_common(1)[0][0]
     
+    # Check for potential duplicate commits if verbose mode is enabled
+    if verbose and commit_hash_tracker:
+        duplicate_count = 0
+        for commit_hash, occurrences in commit_hash_tracker.items():
+            if len(occurrences) > 1:
+                duplicate_count += 1
+                if duplicate_count <= 10:  # Limit output to avoid flooding
+                    print(f"{Fore.RED}Duplicate commit detected: {commit_hash}")
+                    for repo_idx, identity in occurrences:
+                        print(f"  - Repository #{repo_idx}, Developer: {identity}")
+        
+        if duplicate_count > 10:
+            print(f"{Fore.RED}... and {duplicate_count - 10} more duplicate commits{Style.RESET_ALL}")
+        elif duplicate_count > 0:
+            print(f"{Fore.RED}Total duplicate commits: {duplicate_count}{Style.RESET_ALL}")
+    
     return dict(merged_stats), overall_start_date
 
 def handle_stats_command(args):
@@ -370,7 +413,8 @@ def handle_stats_command(args):
                 until=until, 
                 branch=args.branch, 
                 exclude=excluded_patterns,
-                exclude_developers=excluded_developers
+                exclude_developers=excluded_developers,
+                verbose=args.verbose
             )
             stats_list.append(repo_stats)
         except Exception as e:
@@ -379,7 +423,26 @@ def handle_stats_command(args):
     
     # Merge stats if we have multiple repositories
     if len(stats_list) > 1:
-        merged_stats, overall_start_date = merge_stats(stats_list, args.since)
+        merged_stats, overall_start_date = merge_stats(stats_list, args.since, verbose=args.verbose)
+        
+        # Debug specific developers if verbose is enabled
+        if args.verbose:
+            for identity, data in merged_stats.items():
+                if data['commits'] > 50:  # Focus on developers with suspiciously high commit counts
+                    print(f"\n{Fore.MAGENTA}Detailed analysis for {identity} with {data['commits']} commits:{Style.RESET_ALL}")
+                    print(f"  Names used: {', '.join(data['name'])}")
+                    print(f"  Emails used: {', '.join(data['email'])}")
+                    print(f"  First commit: {data['first_commit']}")
+                    print(f"  Last commit: {data['last_commit']}")
+                    print(f"  Unique days with commits: {len(data['commit_days'])}")
+                    if len(data['commit_dates']) > 0:
+                        print(f"  Actual commit dates count: {len(data['commit_dates'])}")
+                        # Sample a few commits to verify
+                        print(f"  Sample of commit dates:")
+                        sample_size = min(10, len(data['commit_dates']))
+                        for i, date in enumerate(sorted(data['commit_dates'])[:sample_size]):
+                            print(f"    {i+1}. {date.strftime('%Y-%m-%d %H:%M:%S')}")
+        
         display_stats(merged_stats, show_emails=args.show_emails, is_merged=True, overall_start_date=overall_start_date)
     elif stats_list:
         # If only one repository, display its stats directly
